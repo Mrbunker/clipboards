@@ -7,10 +7,5 @@
       "@/*": ["./src/*"]
     }
   },
-
-  "references": [
-    {
-      "path": "./tsconfig.config.json"
-    }
-  ]
+  "references": [{ "path": "./tsconfig.config.json" }]
 }

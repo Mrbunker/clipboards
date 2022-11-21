@@ -1,9 +1,11 @@
 <script setup lang="ts">
-  import InputGroup from "./components/InputGroup.vue";
+  import InputList from "./components/InputList.vue";
 </script>
 
 <template>
-  <InputGroup></InputGroup>
+  <html data-theme="wireframe" class="h-screen">
+    <InputList></InputList>
+  </html>
 </template>
 
 <style scoped></style>
