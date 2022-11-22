@@ -2,7 +2,7 @@
   import { ref } from "vue";
   import { useStorage } from "@vueuse/core";
 
-  interface Item {
+  interface StateItem {
     content: string;
     id: number;
   }
@@ -16,31 +16,42 @@
   ];
   const initStateStr = JSON.stringify(initState);
 
-  const listState = useStorage<Item[]>("Datalist", JSON.parse(initStateStr));
+  const StateList = useStorage<StateItem[]>("Datalist", JSON.parse(initStateStr));
 
   const handleAddBtnClick = () => {
-    const newItem: Item = {
+    const newItem: StateItem = {
       content: "",
-      id: listState.value[listState.value.length - 1].id + 1,
+      id: StateList.value[StateList.value.length - 1].id + 1,
     };
-    listState.value.push(newItem);
+    StateList.value.push(newItem);
   };
 
-  const handleCopyBtnClick = (item: Item) => {
+  const handleCopyBtnClick = (item: StateItem) => {
     navigator.clipboard.writeText(item.content);
   };
 
   const handleDelectBtnClick = (index: number) => {
-    listState.value.splice(index, 1);
+    StateList.value.splice(index, 1);
   };
 
-  const handleClearBtnClick = () => {
-    listState.value = JSON.parse(initStateStr);
+  const clearBtn = ref<{ btnState: "clear" | "undo"; saveThelastState: StateItem[] }>({
+    btnState: "clear",
+    saveThelastState: [],
+  });
+  const handleClearBtnClick = (btnState: "clear" | "undo") => {
+    if (btnState === "clear") {
+      clearBtn.value.saveThelastState = StateList.value;
+      StateList.value = JSON.parse(initStateStr);
+      clearBtn.value.btnState = "undo";
+    } else {
+      StateList.value = clearBtn.value.saveThelastState;
+      clearBtn.value.btnState = "clear";
+    }
   };
 </script>
 <template>
   <div class="py-20">
-    <div class="pb-4" v-for="(item, index) in listState" :key="item.id">
+    <div class="pb-4" v-for="(item, index) in StateList" :key="item.id">
       <div class="flex content-center justify-center">
         <input
           type="text"
@@ -61,9 +72,9 @@
 
   <div class="fixed right-28 bottom-10 flex justify-center content-center">
     <button class="btn btn-primary rounded-md" @click="handleAddBtnClick">add</button>
-    <button class="btn btn-primary rounded-md mx-2" @click="handleClearBtnClick">
+    <button class="btn btn-primary rounded-md mx-2" @click="handleClearBtnClick(clearBtn.btnState)">
       <!-- prettier-ignore -->
-      clear
+      {{clearBtn.btnState}}
     </button>
   </div>
 </template>
