@@ -1,37 +1,55 @@
 <script setup lang="ts">
   import { ref } from "vue";
+  import { useStorage } from "@vueuse/core";
 
-  const list = ref([
-    { value: "", btnStr: "copy", id: 1 },
-    { value: "", btnStr: "copy", id: 2 },
-    { value: "", btnStr: "copy", id: 3 },
-  ]);
+  interface Item {
+    content: string;
+    id: number;
+  }
+
+  const initState = [
+    { content: "", id: 0 },
+    { content: "", id: 1 },
+    { content: "", id: 2 },
+    { content: "", id: 3 },
+    { content: "", id: 4 },
+  ];
+  const initStateStr = JSON.stringify(initState);
+
+  const listState = useStorage<Item[]>("Datalist", JSON.parse(initStateStr));
+
   const handleAddBtnClick = () => {
-    // console.log("clickCopy ");
+    const newItem: Item = {
+      content: "",
+      id: listState.value[listState.value.length - 1].id + 1,
+    };
+    listState.value.push(newItem);
   };
-  const handleCopyBtnClick = (index: number) => {
-    list.value[index].btnStr = "success!";
-    setTimeout(() => {
-      list.value[index].btnStr = "copy";
-    }, 750);
+
+  const handleCopyBtnClick = (item: Item) => {
+    navigator.clipboard.writeText(item.content);
   };
 
   const handleDelectBtnClick = (index: number) => {
-    list.value.splice(index, 1);
+    listState.value.splice(index, 1);
+  };
+
+  const handleClearBtnClick = () => {
+    listState.value = JSON.parse(initStateStr);
   };
 </script>
 <template>
   <div class="py-20">
-    <div class="pb-2" v-for="(item, index) in list" :key="item.id">
+    <div class="pb-4" v-for="(item, index) in listState" :key="item.id">
       <div class="flex content-center justify-center">
         <input
           type="text"
           placeholder="Type your text here"
           class="input input-bordered w-full max-w-xs rounded-md rounded-r-none"
-          v-model="item.value"
+          v-model="item.content"
         />
-        <button class="btn rounded-md rounded-l-none w-32" @click="handleCopyBtnClick(index)">
-          {{ item.btnStr }}
+        <button class="btn rounded-md rounded-l-none" @click="handleCopyBtnClick(item)">
+          copy
         </button>
         <button class="btn rounded-md mx-2" @click="handleDelectBtnClick(index)">
           <!-- prettier-ignore -->
@@ -39,8 +57,13 @@
         </button>
       </div>
     </div>
-    <div class="flex justify-center content-center m-5">
-      <button class="btn btn-primary w-52" @click="handleAddBtnClick">add new item</button>
-    </div>
+  </div>
+
+  <div class="fixed right-28 bottom-10 flex justify-center content-center">
+    <button class="btn btn-primary rounded-md" @click="handleAddBtnClick">add</button>
+    <button class="btn btn-primary rounded-md mx-2" @click="handleClearBtnClick">
+      <!-- prettier-ignore -->
+      clear
+    </button>
   </div>
 </template>
