@@ -1,13 +1,13 @@
 <script setup lang="ts">
   import { ref } from "vue";
-  import { useStorage } from "@vueuse/core";
+  import { onKeyStroke, useStorage } from "@vueuse/core";
 
   interface StateItem {
     content: string;
     id: number;
   }
 
-  const initState = [
+  const initState: StateItem[] = [
     { content: "", id: 0 },
     { content: "", id: 1 },
     { content: "", id: 2 },
@@ -18,12 +18,16 @@
 
   const StateList = useStorage<StateItem[]>("Datalist", JSON.parse(initStateStr));
 
-  const handleAddBtnClick = () => {
+  const handleAdd = async (str?: string) => {
+    const clipText = await navigator.clipboard.readText();
     const newItem: StateItem = {
-      content: "",
+      content: str ?? clipText,
       id: StateList.value[StateList.value.length - 1].id + 1,
     };
     StateList.value.push(newItem);
+
+    // 添加后不允许 undo
+    if (clearBtn.value.btnState === "undo") clearBtn.value.btnState = "clear";
   };
 
   const handleCopyBtnClick = (item: StateItem) => {
@@ -38,6 +42,7 @@
     btnState: "clear",
     saveThelastState: [],
   });
+
   const handleClearBtnClick = (btnState: "clear" | "undo") => {
     if (btnState === "clear") {
       clearBtn.value.saveThelastState = StateList.value;
@@ -48,10 +53,17 @@
       clearBtn.value.btnState = "clear";
     }
   };
+
+  /** 当按下 ctrl+v 时 */
+  onKeyStroke(["v", "V"], (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    handleAdd();
+  });
 </script>
 <template>
-  <div class="py-20">
-    <div class="pb-4" v-for="(item, index) in StateList" :key="item.id">
+  <div class="py-16">
+    <div class="pb-2" v-for="(item, index) in StateList" :key="item.id">
       <div class="flex content-center justify-center">
         <input
           type="text"
@@ -71,10 +83,9 @@
   </div>
 
   <div class="fixed right-28 bottom-10 flex justify-center content-center">
-    <button class="btn btn-primary rounded-md" @click="handleAddBtnClick">add</button>
+    <button class="btn btn-primary rounded-md" @click="handleAdd()">add</button>
     <button class="btn btn-primary rounded-md mx-2" @click="handleClearBtnClick(clearBtn.btnState)">
-      <!-- prettier-ignore -->
-      {{clearBtn.btnState}}
+      {{ clearBtn.btnState }}
     </button>
   </div>
 </template>
