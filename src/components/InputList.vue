@@ -2,12 +2,12 @@
   import { computed, ref } from "vue";
   import { onKeyStroke, useActiveElement, useStorage } from "@vueuse/core";
 
-  interface StateItem {
+  interface IStateItem {
     content: string;
     id: number;
   }
 
-  const initState: StateItem[] = [
+  const initState: IStateItem[] = [
     { content: "", id: 0 },
     { content: "", id: 1 },
     { content: "", id: 2 },
@@ -15,7 +15,7 @@
     { content: "", id: 4 },
   ];
   const initStateStr = JSON.stringify(initState);
-  const stateList = useStorage<StateItem[]>("Datalist", JSON.parse(initStateStr));
+  const stateList = useStorage<IStateItem[]>("Datalist", JSON.parse(initStateStr));
 
   /** stateList 中，第一个 content 为空的下标 */
   const emptyIndex = computed(() => {
@@ -24,22 +24,32 @@
     });
   });
 
-  const currentCopyIndex = useStorage<number>("currentCopyIndex", 0);
-  const setCurrentCopyIndex = (index: number) => {
-    currentCopyIndex.value = index;
+  const currentCopyId = useStorage<number>("currentCopyId", 0);
+  const setCurrentCopyId = (id: number) => {
+    currentCopyId.value = id;
   };
 
   const currentCopyText = ref("");
+
   // !todo settings.json
-  const settings = useStorage<{ trim: boolean; quick: boolean }>(
+  const settingJson = {
+    trim: true,
+    quick: true,
+    showCopyItemBtn: false,
+    showPasteItemBtn: false,
+  };
+  const settings = useStorage<typeof settingJson>(
     "settings",
-    JSON.parse(
-      JSON.stringify({
-        trim: true,
-        quick: true,
-      }),
-    ),
+    JSON.parse(JSON.stringify(settingJson)),
   );
+
+  interface IActionItem {
+    action: "pasteItem" | "undoClear" | "clearList";
+    lastStateList: IStateItem[];
+  }
+  /** 操作列表栈，
+   * 记录对 stateList 的修改，如粘贴写入、清除、撤销清除所有 */
+  const actionList: IActionItem[] = [];
 
   const getFormatText = (text: string) => {
     if (settings.value.trim) return text.trim();
@@ -52,32 +62,37 @@
 
   const handleInputChange = () => {
     // 完成新的输入后不允许 undo clear
-    if (clearBtn.value.btnState === "undo") clearBtn.value.btnState = "clear";
+    if (clearBtn.value.btnState === "undoClear") clearBtn.value.btnState = "clearList";
   };
 
-  const clearBtn = ref<{ btnState: "clear" | "undo"; saveThelastState: StateItem[] }>({
-    btnState: "clear",
+  const clearBtn = ref<{ btnState: "clearList" | "undoClear"; saveThelastState: IStateItem[] }>({
+    btnState: "clearList",
     saveThelastState: [],
   });
 
-  const handleClearBtnClick = (btnState: "clear" | "undo") => {
-    if (btnState === "clear") {
+  const handleClear = (btnState: "clearList" | "undoClear") => {
+    actionList.push({ action: btnState, lastStateList: stateList.value });
+
+    if (btnState === "clearList") {
       clearBtn.value.saveThelastState = stateList.value;
       stateList.value = JSON.parse(initStateStr);
-      clearBtn.value.btnState = "undo";
+      clearBtn.value.btnState = "undoClear";
     } else {
       stateList.value = clearBtn.value.saveThelastState;
-      clearBtn.value.btnState = "clear";
+      clearBtn.value.btnState = "clearList";
     }
   };
 
   const handlePaste = async (str?: string) => {
     const clipText = getFormatText(await navigator.clipboard.readText());
+
+    actionList.push({ action: "pasteItem", lastStateList: stateList.value });
+
     // 如果有空的输入框，就插入到空输入框中，否则新开一个
     if (emptyIndex.value !== -1) {
       stateList.value[emptyIndex.value].content = clipText;
     } else {
-      const newItem: StateItem = {
+      const newItem: IStateItem = {
         content: str ?? clipText,
         id: stateList.value[stateList.value.length - 1].id + 1,
       };
@@ -85,83 +100,119 @@
     }
   };
 
-  const handleCopyItem = (item: StateItem) => {
+  const handleCopyItem = (item: IStateItem) => {
     navigator.clipboard.writeText(item.content);
     currentCopyText.value = item.content;
-    console.log(currentCopyText.value);
   };
 
   const handleCopy = () => {
-    if (currentCopyIndex.value === stateList.value.length) {
-      currentCopyIndex.value = 0;
-      currentCopyText.value = "复制到底了";
+    if (currentCopyId.value === stateList.value.length) {
+      currentCopyId.value = stateList.value[0].id;
+      currentCopyText.value = "";
     } else {
-      currentCopyText.value = stateList.value[currentCopyIndex.value].content;
+      currentCopyText.value = stateList.value[currentCopyId.value].content;
       navigator.clipboard.writeText(currentCopyText.value);
-      currentCopyIndex.value = currentCopyIndex.value + 1;
+      currentCopyId.value = currentCopyId.value + 1;
     }
   };
 
   /** 当按下 ctrl+v 时 */
   onKeyStroke(["v", "V"], (e) => {
     // 完成新的输入后不允许 undo clear
-    if (clearBtn.value.btnState === "undo") clearBtn.value.btnState = "clear";
+    if (clearBtn.value.btnState === "undoClear") clearBtn.value.btnState = "clearList";
 
     // 正在聚焦输入框时，不触发快捷键
     const activeElement = useActiveElement();
-    if (activeElement.value?.dataset.type === "input") return;
+    if (activeElement.value?.dataset.hotKeyEnable === "disable") return;
 
     if (!e.ctrlKey) return;
     e.preventDefault();
     handlePaste();
   });
 
-  /** 当按下 ctrl+v 时 */
+  /** 当按下 ctrl+c 时 */
   onKeyStroke(["c", "C"], (e) => {
     // 正在聚焦输入框时，不触发快捷键
     const activeElement = useActiveElement();
-    if (activeElement.value?.dataset.type === "input") return;
+    console.log("| ", activeElement.value?.dataset);
+    if (activeElement.value?.dataset.hotKeyEnable === "disable") return;
 
     if (!e.ctrlKey) return;
     e.preventDefault();
     handleCopy();
   });
+
+  /** 当按下 ctrl+z 时 */
+  onKeyStroke(["z", "Z"], (e) => {
+    // 正在聚焦输入框时，不触发快捷键
+    const activeElement = useActiveElement();
+    if (activeElement.value?.dataset.hotKeyEnable === "disable") return;
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+
+    // stateList.value = actionList[actionList.length].lastStateList;
+    // actionList.pop();
+  });
 </script>
 <template>
+  <div class="p-6">
+    <div>
+      <span class="px-1">Copyed:</span>
+      <span class="rounded-md px-2 text-primary-content bg-primary-focus">{{
+        currentCopyText
+      }}</span>
+    </div>
+  </div>
   <div class="py-16">
     <div class="pb-2" v-for="(item, index) in stateList" :key="item.id">
       <div class="flex content-center justify-center">
         <input
           type="text"
+          :tabindex="index + 1"
           placeholder="Type your text here"
-          class="input input-bordered w-full max-w-xs rounded-md rounded-r-none"
-          data-type="input"
+          class="input input-bordered w-full max-w-md rounded-md rounded-r-none"
+          data-hot-key-enable="disable"
           @input="handleInputChange()"
           spellcheck="false"
           v-model="item.content"
         />
 
-        <button :class="`btn rounded-md rounded-l-none `" @click="handleCopyItem(item)">
-          copy {{ item.id === currentCopyIndex ? "!" : "" }}
+        <button
+          class="btn w-6 mr-2 rounded-md rounded-l-none"
+          :class="{
+            'bg-primary-focus': item.id === currentCopyId,
+            'bg-neutral': item.id !== currentCopyId,
+          }"
+          title="set as copy target"
+          @click="setCurrentCopyId(item.id)"
+        ></button>
+
+        <button v-if="settings.showCopyItemBtn" class="btn" @click="handleCopyItem(item)">
+          copy
         </button>
 
-        <button class="btn rounded-md rounded-l-none" @click="setCurrentCopyIndex(index)">
-          set as copy target
-        </button>
-        <button class="btn rounded-md mx-2" @click="handleDelectBtnClick(index)">
+        <button
+          class="btn bg-neutral p-3 rounded-md"
+          title="delete"
+          @click="handleDelectBtnClick(index)"
+        >
           <!-- prettier-ignore -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" > <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /> </svg>
+          <svg width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 14L34 34" stroke="#333" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 34L34 14" stroke="#333" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
     </div>
-    <div>current:{{ currentCopyText }}</div>
-    <div>current:{{ +currentCopyIndex }}</div>
   </div>
 
   <div class="fixed right-10 bottom-10 flex justify-center content-center">
     <button class="btn btn-primary rounded-md mr-2" @click="handleCopy">copy</button>
-    <button class="btn btn-primary rounded-md mr-2" @click="handlePaste()">paste</button>
-    <button class="btn btn-primary rounded-md" @click="handleClearBtnClick(clearBtn.btnState)">
+    <button
+      v-if="settings.showPasteItemBtn"
+      class="btn btn-primary rounded-md mr-2"
+      @click="handlePaste()"
+    >
+      paste
+    </button>
+    <button class="btn btn-primary rounded-md" @click="handleClear(clearBtn.btnState)">
       {{ clearBtn.btnState }}
     </button>
   </div>
