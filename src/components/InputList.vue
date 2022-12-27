@@ -42,6 +42,7 @@
     JSON.parse(JSON.stringify(settingJson)),
   );
 
+  /** 格式化，去尾空格 */
   const getFormatText = (text: string) => {
     if (settings.value.trim) return text.trim();
     else return text;
@@ -72,6 +73,13 @@
     }
   };
 
+  const handleNewItem = () => {
+    stateList.value.push({
+      content: "",
+      id: stateList.value[stateList.value.length - 1].id + 1,
+    });
+  };
+
   const handlePaste = async (str?: string) => {
     const clipText = getFormatText(await navigator.clipboard.readText());
 
@@ -79,11 +87,10 @@
     if (emptyIndex.value !== -1) {
       stateList.value[emptyIndex.value].content = clipText;
     } else {
-      const newItem: IStateItem = {
+      stateList.value.push({
         content: str ?? clipText,
         id: stateList.value[stateList.value.length - 1].id + 1,
-      };
-      stateList.value.push(newItem);
+      });
     }
   };
 
@@ -176,6 +183,10 @@
           <svg width="24" height="24" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 14L34 34" stroke="#333" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 34L34 14" stroke="#333" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
+    </div>
+    <div class="flex content-center justify-center m-2">
+      <button class="btn rounded-md mr-2" @click="handleNewItem">+1 input</button>
+      <!-- <button class="btn rounded-md">import long text</button> -->
     </div>
   </div>
 
