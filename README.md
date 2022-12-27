@@ -4,6 +4,8 @@
 
 - [ctrl+z] undo paste
 - can be dragged
+- settings
+- long text
   
 #### done
 - [CopyTip] show the string after you copy

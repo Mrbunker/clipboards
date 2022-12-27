@@ -24,9 +24,9 @@
     });
   });
 
-  const currentCopyId = useStorage<number>("currentCopyId", 0);
-  const setCurrentCopyId = (id: number) => {
-    currentCopyId.value = id;
+  const currentCopyIdx = useStorage<number>("currentCopyIdx", 0);
+  const setCurrentCopyIdx = (idx: number) => {
+    currentCopyIdx.value = idx;
   };
 
   const currentCopyText = ref("");
@@ -106,13 +106,14 @@
   };
 
   const handleCopy = () => {
-    if (currentCopyId.value === stateList.value.length) {
-      currentCopyId.value = stateList.value[0].id;
+    if (currentCopyIdx.value === stateList.value.length) {
+      // 复制到底
+      currentCopyIdx.value = 0;
       currentCopyText.value = "";
     } else {
-      currentCopyText.value = stateList.value[currentCopyId.value].content;
+      currentCopyText.value = stateList.value[currentCopyIdx.value].content;
       navigator.clipboard.writeText(currentCopyText.value);
-      currentCopyId.value = currentCopyId.value + 1;
+      currentCopyIdx.value = currentCopyIdx.value + 1;
     }
   };
 
@@ -132,9 +133,9 @@
 
   /** 当按下 ctrl+c 时 */
   onKeyStroke(["c", "C"], (e) => {
+    console.log("| ", stateList.value);
     // 正在聚焦输入框时，不触发快捷键
     const activeElement = useActiveElement();
-    console.log("| ", activeElement.value?.dataset);
     if (activeElement.value?.dataset.hotKeyEnable === "disable") return;
 
     if (!e.ctrlKey) return;
@@ -161,6 +162,7 @@
       <span class="rounded-md px-2 text-primary-content bg-primary-focus">{{
         currentCopyText
       }}</span>
+      <div>{{ currentCopyIdx }}</div>
     </div>
   </div>
   <div class="py-16">
@@ -180,11 +182,11 @@
         <button
           class="btn w-6 mr-2 rounded-md rounded-l-none"
           :class="{
-            'bg-primary-focus': item.id === currentCopyId,
-            'bg-neutral': item.id !== currentCopyId,
+            'bg-primary-focus': index === currentCopyIdx,
+            'bg-neutral': index !== currentCopyIdx,
           }"
           title="set as copy target"
-          @click="setCurrentCopyId(item.id)"
+          @click="setCurrentCopyIdx(index)"
         ></button>
 
         <button v-if="settings.showCopyItemBtn" class="btn" @click="handleCopyItem(item)">
