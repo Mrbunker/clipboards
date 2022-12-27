@@ -213,7 +213,7 @@
       paste
     </button>
     <button class="btn btn-primary rounded-md" @click="handleClear(clearBtn.btnState)">
-      {{ clearBtn.btnState }}
+      {{ clearBtn.btnState === "clearList" ? "clear" : "undo" }}
     </button>
   </div>
 </template>
