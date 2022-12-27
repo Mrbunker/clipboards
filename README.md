@@ -2,12 +2,11 @@
 
 #### todo
 
-- [ctrl+z] undo paste
 - can be dragged
-- settings
 - long text
   
 #### done
+- settings
 - [CopyTip] show the string after you copy
 - Continuous Paste Mode
 - Continuous Copy Mode

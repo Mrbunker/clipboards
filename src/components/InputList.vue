@@ -34,7 +34,6 @@
   // !todo settings.json
   const settingJson = {
     trim: true,
-    quick: true,
     showCopyItemBtn: false,
     showPasteItemBtn: false,
   };
@@ -42,14 +41,6 @@
     "settings",
     JSON.parse(JSON.stringify(settingJson)),
   );
-
-  interface IActionItem {
-    action: "pasteItem" | "undoClear" | "clearList";
-    lastStateList: IStateItem[];
-  }
-  /** 操作列表栈，
-   * 记录对 stateList 的修改，如粘贴写入、清除、撤销清除所有 */
-  const actionList: IActionItem[] = [];
 
   const getFormatText = (text: string) => {
     if (settings.value.trim) return text.trim();
@@ -71,8 +62,6 @@
   });
 
   const handleClear = (btnState: "clearList" | "undoClear") => {
-    actionList.push({ action: btnState, lastStateList: stateList.value });
-
     if (btnState === "clearList") {
       clearBtn.value.saveThelastState = stateList.value;
       stateList.value = JSON.parse(initStateStr);
@@ -85,8 +74,6 @@
 
   const handlePaste = async (str?: string) => {
     const clipText = getFormatText(await navigator.clipboard.readText());
-
-    actionList.push({ action: "pasteItem", lastStateList: stateList.value });
 
     // 如果有空的输入框，就插入到空输入框中，否则新开一个
     if (emptyIndex.value !== -1) {
@@ -133,7 +120,6 @@
 
   /** 当按下 ctrl+c 时 */
   onKeyStroke(["c", "C"], (e) => {
-    console.log("| ", stateList.value);
     // 正在聚焦输入框时，不触发快捷键
     const activeElement = useActiveElement();
     if (activeElement.value?.dataset.hotKeyEnable === "disable") return;
@@ -141,18 +127,6 @@
     if (!e.ctrlKey) return;
     e.preventDefault();
     handleCopy();
-  });
-
-  /** 当按下 ctrl+z 时 */
-  onKeyStroke(["z", "Z"], (e) => {
-    // 正在聚焦输入框时，不触发快捷键
-    const activeElement = useActiveElement();
-    if (activeElement.value?.dataset.hotKeyEnable === "disable") return;
-    if (!e.ctrlKey) return;
-    e.preventDefault();
-
-    // stateList.value = actionList[actionList.length].lastStateList;
-    // actionList.pop();
   });
 </script>
 <template>
@@ -162,7 +136,7 @@
       <span class="rounded-md px-2 text-primary-content bg-primary-focus">{{
         currentCopyText
       }}</span>
-      <div>{{ currentCopyIdx }}</div>
+      <!-- <div>{{ currentCopyIdx }}</div> -->
     </div>
   </div>
   <div class="py-16">
@@ -189,7 +163,7 @@
           @click="setCurrentCopyIdx(index)"
         ></button>
 
-        <button v-if="settings.showCopyItemBtn" class="btn" @click="handleCopyItem(item)">
+        <button v-if="settings.showCopyItemBtn" class="btn mr-2" @click="handleCopyItem(item)">
           copy
         </button>
 
@@ -214,8 +188,26 @@
     >
       paste
     </button>
-    <button class="btn btn-primary rounded-md" @click="handleClear(clearBtn.btnState)">
+    <button class="btn btn-primary rounded-md mr-2" @click="handleClear(clearBtn.btnState)">
       {{ clearBtn.btnState === "clearList" ? "clear" : "undo" }}
     </button>
+
+    <div class="dropdown dropdown-hover dropdown-top dropdown-end">
+      <label class="btn btn-primary rounded-md">settings</label>
+      <ul class="dropdown-content menu p-2 shadow bg-base-100 rounded-box">
+        <label class="label cursor-pointer">
+          <span class="label-text">trim space</span>
+          <input type="checkbox" class="toggle" v-model="settings.trim" />
+        </label>
+        <label class="label cursor-pointer">
+          <span class="label-text pr-4">showCopyItemBtn</span>
+          <input type="checkbox" class="toggle" v-model="settings.showCopyItemBtn" />
+        </label>
+        <label class="label cursor-pointer">
+          <span class="label-text">showPasteItemBtn</span>
+          <input type="checkbox" class="toggle" v-model="settings.showPasteItemBtn" />
+        </label>
+      </ul>
+    </div>
   </div>
 </template>
