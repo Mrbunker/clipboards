@@ -185,7 +185,7 @@
       </div>
     </div>
     <div class="flex content-center justify-center m-2">
-      <button class="btn rounded-md mr-2" @click="handleNewItem">+1 input</button>
+      <button class="btn rounded-md mr-2" @click="handleNewItem">input +1</button>
       <!-- <button class="btn rounded-md">import long text</button> -->
     </div>
   </div>
